@@ -24,6 +24,9 @@
       "./node_modules/@types"
     ]
   },
+  "include": [
+    "test/**/*.test.ts"
+, "test/cdk/product-service.test.ts"  ],
   "exclude": [
     "node_modules",
     "cdk.out"
