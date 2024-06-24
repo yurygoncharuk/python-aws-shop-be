@@ -12,7 +12,12 @@ class DecimalEncoder(json.JSONEncoder):
             return int(o)
         return super(DecimalEncoder, self).default(o)
 
-def return_error(status_code, message):
+def return_error(status_code, message = None):
+    response = {
+        400: { "message": "400 Bad request" },
+        404: { "message": "404 Product not found" },
+        500: { "message": "500 Internal server error"}
+    }
     return {
         'statusCode': status_code,
         'headers': {
@@ -21,5 +26,5 @@ def return_error(status_code, message):
             "Access-Control-Allow-Headers": "Content-Type",
             "Content-Type": "application/json",
         },
-        'body': json.dumps(message, cls=DecimalEncoder)
+        'body': json.dumps(message if message is not None else response[status_code], cls=DecimalEncoder)
     }

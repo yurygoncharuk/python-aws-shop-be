@@ -6,13 +6,14 @@ from common import return_error
 
 def handler(event, lambda_context):
     try:
+        print(json.dumps(event))
         product = json.loads(event['body'])
         id = uuid.uuid4()
         products_table_name = os.getenv('PRODUCTS_TABLE_NAME', "products")
         stocks_table_name = os.getenv('STOCKS_TABLE_NAME', "stocks")
         
         if not product.get('title') or not product.get('description') or not product.get('price'):
-            return return_error(400, { "message": "Bad request" })
+            return return_error(400)
 
         dynamodb = boto3.client('dynamodb')
         response = dynamodb.transact_write_items(
@@ -47,7 +48,7 @@ def handler(event, lambda_context):
 
     except Exception as e:
         print(e)
-        return return_error(500, { "message": f"Internal server error: {str(e)}" })
+        return return_error(500, { "message": f"500 Internal server error: {str(e)}" })
     
 if __name__ == "__main__":
     handler(None, None)

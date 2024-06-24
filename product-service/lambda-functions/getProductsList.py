@@ -7,6 +7,7 @@ from common import return_error
 
 def handler(event, lambda_context):
     try:
+        print(json.dumps(event))
         products_table_name = os.getenv('PRODUCTS_TABLE_NAME', "products")
         stocks_table_name = os.getenv('STOCKS_TABLE_NAME', "stocks")
         
@@ -18,7 +19,7 @@ def handler(event, lambda_context):
         products_response = products_table.scan()
         products_items = products_response['Items']
         if not products_items:
-            return return_error(404, { "message": "Products not found" })
+            return return_error(404)
 
         products = []
         for product in products_items:
@@ -36,7 +37,7 @@ def handler(event, lambda_context):
 
     except Exception as e:
         print(e)
-        return return_error(500, { "message": f"Internal server error: {str(e)}" })
+        return return_error(500, { "message": f"500 Internal server error: {str(e)}" })
 
 if __name__ == "__main__":
     handler(None, None)
