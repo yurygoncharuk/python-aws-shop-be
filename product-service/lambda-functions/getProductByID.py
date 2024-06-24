@@ -7,8 +7,8 @@ def handler(event, lambda_context):
     try:
         product_id = event['pathParameters']['product_id']
 
-        products_table_name = os.getenv('PRODUCTS_TABLE_NAME')
-        stocks_table_name = os.getenv('STOCKS_TABLE_NAME')
+        products_table_name = os.getenv('PRODUCTS_TABLE_NAME', "products")
+        stocks_table_name = os.getenv('STOCKS_TABLE_NAME', "stocks")
         
         dynamodb = boto3.resource('dynamodb')
 
