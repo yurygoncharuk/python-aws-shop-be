@@ -9,7 +9,7 @@
     "watch": "tsc -w",
     "test": "npm run test:cdk && npm run test:lambda",
     "test:cdk": "jest",
-    "test:lambda": "python3 -m unittest discover -s test/* -p 'test_*.py'",
+    "test:lambda": "pip install -r test/requirements.txt --break-system-packages && python3 -m unittest discover -s test/* -p 'test_*.py'",
     "cdk": "cdk"
   },
   "devDependencies": {
