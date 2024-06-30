@@ -2,7 +2,7 @@ import os
 import json
 import boto3
 from boto3.dynamodb.conditions import Key
-from common import return_error
+from common import return_message
 
 def handler(event, lambda_context):
     try:
@@ -30,13 +30,13 @@ def handler(event, lambda_context):
                 product[0]['count'] = stocs_items[0]['count']
             else:
                 product[0]['count'] = 0
-            return return_error(200, product[0])
+            return return_message(200, product[0])
         else:
-            return return_error(404)
+            return return_message(404)
         
     except Exception as e:
         print(e)
-        return return_error(500, { "message": f"500 Internal server error: {str(e)}" })
+        return return_message(500, { "message": f"500 Internal server error: {str(e)}" })
 
 if __name__ == "__main__":
     handler(None, None)

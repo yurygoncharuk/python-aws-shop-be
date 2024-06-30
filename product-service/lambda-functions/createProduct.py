@@ -2,7 +2,7 @@ import os
 import boto3
 import uuid
 import json
-from common import return_error
+from common import return_message
 
 def handler(event, lambda_context):
     try:
@@ -13,7 +13,7 @@ def handler(event, lambda_context):
         stocks_table_name = os.getenv('STOCKS_TABLE_NAME', "stocks")
         
         if not product.get('title') or not product.get('description') or not product.get('price'):
-            return return_error(400)
+            return return_message(400)
 
         dynamodb = boto3.client('dynamodb')
         response = dynamodb.transact_write_items(
@@ -44,11 +44,11 @@ def handler(event, lambda_context):
                 }
             ]
         )
-        return return_error(200, { "message": "Product was created", "id": str(id) })
+        return return_message(200, { "message": "Product was created", "id": str(id) })
 
     except Exception as e:
         print(e)
-        return return_error(500, { "message": f"500 Internal server error: {str(e)}" })
+        return return_message(500, { "message": f"500 Internal server error: {str(e)}" })
     
 if __name__ == "__main__":
     handler(None, None)

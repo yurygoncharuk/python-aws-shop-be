@@ -106,20 +106,41 @@ export class ProductServiceStack extends cdk.Stack {
     });
 
     const productsResource = api.root.addResource('products');
-    productsResource.addMethod(
-      'GET',
-      new apigateway.LambdaIntegration(getProductsListFunction)
-    );
-    productsResource.addMethod(
-      'POST',
-      new apigateway.LambdaIntegration(createProductFunction)
-    );
+    const productModel = new apigateway.Model(this, 'ProductModel', {
+      restApi: api,
+      modelName: 'ProductModel',
+      description: 'Create Product body validation',
+      contentType: 'application/json',
+      schema: {
+        type: apigateway.JsonSchemaType.OBJECT,
+        required: ['title', 'description', 'price'],
+        properties: {
+          title: { type: apigateway.JsonSchemaType.STRING },
+          description: { type: apigateway.JsonSchemaType.STRING },
+          price: { type: apigateway.JsonSchemaType.NUMBER },
+          count: { type: apigateway.JsonSchemaType.NUMBER },
+        },
+      },
+    });
+
+    productsResource.addMethod('GET', new apigateway.LambdaIntegration(getProductsListFunction));
+    productsResource.addMethod('POST', new apigateway.LambdaIntegration(createProductFunction), {
+      requestValidator: new apigateway.RequestValidator(
+        this,
+        'CreateProductBodyValidator',
+        {
+          restApi: api,
+          requestValidatorName: 'CreateProductBodyValidator',
+          validateRequestBody: true,
+        }
+      ),
+      requestModels: {
+        'application/json': productModel,
+      },
+    });
 
     const productByIDResource = productsResource.addResource('{product_id}');
-    productByIDResource.addMethod(
-      'GET',
-      new apigateway.LambdaIntegration(getProductByIDFunction)
-    );
+    productByIDResource.addMethod('GET', new apigateway.LambdaIntegration(getProductByIDFunction));
 
     new cdk.CfnOutput(this, 'API_URL', {
       value: api.url,

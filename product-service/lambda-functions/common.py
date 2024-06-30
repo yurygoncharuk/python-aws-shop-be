@@ -12,7 +12,7 @@ class DecimalEncoder(json.JSONEncoder):
             return int(o)
         return super(DecimalEncoder, self).default(o)
 
-def return_error(status_code, message = None):
+def return_message(status_code, message = None):
     response = {
         400: { "message": "400 Bad request" },
         404: { "message": "404 Product not found" },

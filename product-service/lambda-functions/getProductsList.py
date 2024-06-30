@@ -2,7 +2,7 @@ import json
 import os
 import boto3
 from boto3.dynamodb.conditions import Key
-from common import return_error
+from common import return_message
 
 
 def handler(event, lambda_context):
@@ -19,7 +19,7 @@ def handler(event, lambda_context):
         products_response = products_table.scan()
         products_items = products_response['Items']
         if not products_items:
-            return return_error(404)
+            return return_message(404)
 
         products = []
         for product in products_items:
@@ -33,11 +33,11 @@ def handler(event, lambda_context):
                 product['count'] = 0
             products.append(product)
 
-        return return_error(200, products)
+        return return_message(200, products)
 
     except Exception as e:
         print(e)
-        return return_error(500, { "message": f"500 Internal server error: {str(e)}" })
+        return return_message(500, { "message": f"500 Internal server error: {str(e)}" })
 
 if __name__ == "__main__":
     handler(None, None)
