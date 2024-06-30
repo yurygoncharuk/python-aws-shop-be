@@ -1,31 +1,42 @@
-import json
 import os
+import json
+import boto3
+from boto3.dynamodb.conditions import Key
+from common import return_message
 
 def handler(event, lambda_context):
-    products = json.loads(os.getenv('MOCK_PRODUCTS'))
-    product_id = event['pathParameters']['product_id']
-    product = next((p for p in products if p['id'] == product_id), None)
+    try:
+        print(json.dumps(event))
+        product_id = event['pathParameters']['product_id']
 
-    if product:
-        return {
-            'statusCode': 200,
-            'headers': {
-                "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Methods": "GET",
-                "Access-Control-Allow-Headers": "Content-Type",
-                "Content-Type": "application/json",
-            },
-            'body': json.dumps(product)
-        }
-    else:
-        return {
-            'statusCode': 404,
-            'headers': {
-                "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Methods": "GET",
-                "Access-Control-Allow-Headers": "Content-Type",
-                "Content-Type": "application/json",
-            },
-            'body': json.dumps({ "message": "Product not found" })
-        }
+        products_table_name = os.getenv('PRODUCTS_TABLE_NAME', "products")
+        stocks_table_name = os.getenv('STOCKS_TABLE_NAME', "stocks")
+        
+        dynamodb = boto3.resource('dynamodb')
 
+        products_table = dynamodb.Table(products_table_name)
+        products_response = products_table.query(
+            KeyConditionExpression=Key('id').eq(product_id)
+        )
+
+        product = products_response['Items']
+        if product:
+            stocks_table = dynamodb.Table(stocks_table_name)
+            stocks_response = stocks_table.query(
+                KeyConditionExpression=Key('product_id').eq(product_id)
+            )
+            stocs_items = stocks_response['Items']
+            if stocs_items:
+                product[0]['count'] = stocs_items[0]['count']
+            else:
+                product[0]['count'] = 0
+            return return_message(200, product[0])
+        else:
+            return return_message(404)
+        
+    except Exception as e:
+        print(e)
+        return return_message(500, { "message": f"500 Internal server error: {str(e)}" })
+
+if __name__ == "__main__":
+    handler(None, None)
