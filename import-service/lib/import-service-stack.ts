@@ -17,17 +17,19 @@ export class ImportServiceStack extends cdk.Stack {
       bucketName: bucketName,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      cors: [
+        {
+          allowedMethods: [
+            s3.HttpMethods.PUT,
+          ],
+          allowedOrigins: ['*'],
+          allowedHeaders: ['*'],
+        },
+      ],
     });
 
      new cdk.CfnOutput(this, "Bucket", { value: importBucket.bucketName });
-    // importBucket.addToResourcePolicy(
-    //   new iam.PolicyStatement({
-    //     effect: iam.Effect.ALLOW,
-    //     actions: ["s3:GetObject"],
-    //     resources: [`${importBucket.bucketArn}/*`],
-    //     principals: [new iam.AnyPrincipal()],
-    //   }),
-    // );
 
     // Lambda function importProductsFile
     const importProductsFileFunction = new lambda.Function(this, 'importProductsFile', {
@@ -41,14 +43,6 @@ export class ImportServiceStack extends cdk.Stack {
     });
     importBucket.grantReadWrite(importProductsFileFunction)
     importBucket.grantPut(importProductsFileFunction)
-    importBucket.addToResourcePolicy(
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        actions: ["s3:GetObject", "s3.PutObject"],
-        resources: [`${importBucket.bucketArn}/*`],
-        principals: [],
-      }),
-    );
 
     // Lambda function importFileParser
     const importFileParserFunction = new lambda.Function(this, 'importFileParser', {

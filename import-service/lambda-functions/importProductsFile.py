@@ -1,25 +1,37 @@
 import os
 import boto3
+from botocore.config import Config
+import json
 
 def handler(event, context):
-    file_name = 'test.csv' #event['queryStringParameters']
-    print(event)
-    s3_bucket = 'rs-school-import-service' #os.environ['IMPORT_BUCKET_NAME']
+    file_name = event['queryStringParameters']['name']
+    s3_client = boto3.client('s3', config=Config(signature_version='s3v4'))
+    s3_bucket = os.getenv('IMPORT_BUCKET_NAME', "rs-school-import-service")
     key = f'uploaded/{file_name}'
     params = {
         'Bucket': s3_bucket,
         'Key': key
     }
 
-    region = 'eu-west-1'
-    s3 = boto3.client('s3', region_name=region)
-    presigned_url = s3.generate_presigned_url(
-        ClientMethod = 'put_object',
-        Params = params,
-        ExpiresIn = 3600,
-        HttpMethod = 'PUT'
-    )
-    print(presigned_url)
+    try:
+        presigned_url = s3_client.generate_presigned_url(
+            ClientMethod = 'put_object',
+            Params = params,
+            HttpMethod = 'PUT'
+        )
+        print(presigned_url)
+    except Exception as e:
+        print(f"Error generating presigned URL: {e}")
+        return {
+            'statusCode': 500,
+            'headers': {
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "GET",
+                "Access-Control-Allow-Headers": "Content-Type",
+                "Content-Type": "application/json",
+            },
+            'body': json.dumps(f"500 Internal server error: {str(e)}")
+        }
     return {
         'statusCode': 200,
         'headers': {
