@@ -2,9 +2,9 @@ import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as s3_notifications from "aws-cdk-lib/aws-s3-notifications";
-import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
+import * as fs from 'fs';
 
 export class ImportServiceStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -32,11 +32,12 @@ export class ImportServiceStack extends cdk.Stack {
      new cdk.CfnOutput(this, "Bucket", { value: importBucket.bucketName });
 
     // Lambda function importProductsFile
+    const importProductsFileCode = fs.readFileSync('lambda-functions/importProductsFile.py', 'utf-8');
     const importProductsFileFunction = new lambda.Function(this, 'importProductsFile', {
       functionName: 'importProductsFile',
       runtime: lambda.Runtime.PYTHON_3_12,
-      code: lambda.Code.fromAsset('lambda-functions'),
-      handler: 'importProductsFile.handler',
+      code: lambda.Code.fromInline(importProductsFileCode),
+      handler: 'index.handler',
       environment: {
         IMPORT_BUCKET_NAME: importBucket.bucketName,
       },
@@ -45,11 +46,12 @@ export class ImportServiceStack extends cdk.Stack {
     importBucket.grantPut(importProductsFileFunction)
 
     // Lambda function importFileParser
+    const importFileParserCode = fs.readFileSync('lambda-functions/importFileParser.py', 'utf-8');
     const importFileParserFunction = new lambda.Function(this, 'importFileParser', {
       functionName: 'importFileParser',
       runtime: lambda.Runtime.PYTHON_3_12,
-      code: lambda.Code.fromAsset('lambda-functions'),
-      handler: 'importFileParser.handler',
+      code: lambda.Code.fromInline(importFileParserCode),
+      handler: 'index.handler',
       environment: {
         IMPORT_BUCKET_NAME: importBucket.bucketName,
       },
