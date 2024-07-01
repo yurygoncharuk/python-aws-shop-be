@@ -16,7 +16,7 @@ test('S3 Bucket is Created', () => {
 
 test('Lambda Function importFileParser is Created', () => {
     template.hasResourceProperties('AWS::Lambda::Function', {
-        Handler: 'importFileParser.handler',
+        Handler: 'index.handler',
         Runtime: 'python3.12',
         FunctionName: 'importFileParser',
         "Environment": {
@@ -29,7 +29,7 @@ test('Lambda Function importFileParser is Created', () => {
 
 test('Lambda Function importProductsFile is Created', () => {
     template.hasResourceProperties('AWS::Lambda::Function', {
-        Handler: 'importProductsFile.handler',
+        Handler: 'index.handler',
         Runtime: 'python3.12',
         FunctionName: 'importProductsFile',
         "Environment": {
