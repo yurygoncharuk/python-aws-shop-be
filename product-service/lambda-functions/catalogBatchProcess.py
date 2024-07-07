@@ -13,7 +13,7 @@ def handler(event, lambda_context):
         for record in event['Records']:
             product = json.loads(record['body'])
             print(json.dumps(product))
-            #write_to_dynamodb(product)
+            write_to_dynamodb(product)
             products_list.append(product)
     except Exception as e:
         print(e)

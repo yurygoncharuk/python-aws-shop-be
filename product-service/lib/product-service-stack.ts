@@ -78,15 +78,15 @@ export class ProductServiceStack extends cdk.Stack {
       topicName: snsName,
     });
     new cdk.CfnOutput(this, 'TopicName', { value: createProductTopic.topicName });
-    createProductTopic.addSubscription(
-      new EmailSubscription(email, {
-        filterPolicyWithMessageBody: {
-          count: FilterOrPolicy.filter(
-            SubscriptionFilter.numericFilter({ greaterThanOrEqualTo: 3 })
-          ),
-        },
-      })
-    );
+    // createProductTopic.addSubscription(
+    //   new EmailSubscription(email, {
+    //     filterPolicyWithMessageBody: {
+    //       count: FilterOrPolicy.filter(
+    //         SubscriptionFilter.numericFilter({ greaterThanOrEqualTo: 3 })
+    //       ),
+    //     },
+    //   })
+    // );
 
 
     // Lambda function getProductsList
