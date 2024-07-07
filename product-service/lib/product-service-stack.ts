@@ -4,6 +4,10 @@ import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import * as sqs from 'aws-cdk-lib/aws-sqs';
+import { FilterOrPolicy, SubscriptionFilter, Topic } from "aws-cdk-lib/aws-sns";
+import { EmailSubscription } from "aws-cdk-lib/aws-sns-subscriptions";
+import { SqsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 
 export class ProductServiceStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -53,6 +57,38 @@ export class ProductServiceStack extends cdk.Stack {
       ],
     });
 
+    // SQS
+    const sqsName = "catalogItemsQueue"
+    const catalogItemsQueue = new sqs.Queue(this, sqsName, {
+      queueName: sqsName,
+      visibilityTimeout: cdk.Duration.seconds(30),
+      retentionPeriod: cdk.Duration.days(1),      
+    });
+    new cdk.CfnOutput(this, 'QueueName', { value: catalogItemsQueue.queueName });
+    new cdk.CfnOutput(this, 'QueueURL', { value: catalogItemsQueue.queueUrl });
+    new cdk.CfnOutput(this, 'QueueARN', {
+      value: catalogItemsQueue.queueArn,
+      exportName: 'catalogItemsQueue',
+    });
+
+    // SNS
+    const snsName = "createProductTopic"
+    const email = "yury.hancharuk@gmail.com"
+    const createProductTopic = new Topic(this, snsName, {
+      topicName: snsName,
+    });
+    new cdk.CfnOutput(this, 'TopicName', { value: createProductTopic.topicName });
+    createProductTopic.addSubscription(
+      new EmailSubscription(email, {
+        filterPolicyWithMessageBody: {
+          count: FilterOrPolicy.filter(
+            SubscriptionFilter.numericFilter({ greaterThanOrEqualTo: 3 })
+          ),
+        },
+      })
+    );
+
+
     // Lambda function getProductsList
     const getProductsListFunction = new lambda.Function(this, 'getProductsList', {
       functionName: 'getProductsList',
@@ -91,6 +127,28 @@ export class ProductServiceStack extends cdk.Stack {
       },
     });
     createProductFunction.addToRolePolicy(dynamodbPolicy);
+
+    // Lambda function catalogBatchProcess
+    const catalogBatchProcessFunction = new lambda.Function(this, 'catalogBatchProcess', {
+      functionName: 'catalogBatchProcess',
+      runtime: lambda.Runtime.PYTHON_3_12,
+      code: lambda.Code.fromAsset('lambda-functions'),
+      handler: 'catalogBatchProcess.handler',
+      environment: {
+        SQS_URL: catalogItemsQueue.queueUrl,
+        SNS_ARN: createProductTopic.topicArn,
+        PRODUCTS_TABLE_NAME: productsTable.tableName,
+        STOCKS_TABLE_NAME: stocksTable.tableName,
+      },
+    });
+    catalogBatchProcessFunction.addToRolePolicy(dynamodbPolicy);
+    catalogItemsQueue.grantConsumeMessages(catalogBatchProcessFunction);
+    catalogBatchProcessFunction.addEventSource(
+      new SqsEventSource(catalogItemsQueue, {
+        batchSize: 5,
+      }),
+    );
+    createProductTopic.grantPublish(catalogBatchProcessFunction);
 
     // API Gateway
     const api = new apigateway.RestApi(this, 'ProductServiceAPI', {
@@ -145,5 +203,6 @@ export class ProductServiceStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'API_URL', {
       value: api.url,
     })
+
   }
 }

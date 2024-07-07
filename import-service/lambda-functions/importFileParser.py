@@ -2,11 +2,14 @@ import os
 import boto3
 import csv
 import json
+import uuid
 from io import StringIO
 
 def handler(event, context):
     s3_bucket = os.getenv('IMPORT_BUCKET_NAME', "rs-school-import-service")
     s3_client = boto3.client('s3')
+    sqs_url = os.getenv('SQS_URL', "")
+    sqs_client = boto3.client('sqs')
 
     try:
         for record in event['Records']:
@@ -19,9 +22,26 @@ def handler(event, context):
 
             csv_data = StringIO(s3_data)
             csv_reader = csv.DictReader(csv_data)
-        
+            entries = []
             for row in csv_reader:
-                print(json.dumps(row))
+                entry = json.dumps(row)
+                print(entry)
+                entries.append({
+                    "Id": str(uuid.uuid4()),
+                    "MessageBody": entry
+                })
+
+            try:
+                sqs_client.send_message_batch(
+                    QueueUrl=sqs_url,
+                    Entries=entries
+                )
+            except Exception as e:
+                print(f"Error sending message to SQS: {e}")
+                return {
+                    'statusCode': 500,
+                    'body': json.dumps(f"Error sending message to SQS: {e}")
+                }
 
             s3_client.copy_object(
                 CopySource={'Bucket': s3_bucket, 'Key': key},

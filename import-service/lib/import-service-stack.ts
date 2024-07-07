@@ -4,6 +4,7 @@ import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as s3_notifications from "aws-cdk-lib/aws-s3-notifications";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
+import * as sqs from 'aws-cdk-lib/aws-sqs';
 import * as fs from 'fs';
 
 export class ImportServiceStack extends cdk.Stack {
@@ -29,7 +30,12 @@ export class ImportServiceStack extends cdk.Stack {
       ],
     });
 
-     new cdk.CfnOutput(this, "Bucket", { value: importBucket.bucketName });
+    new cdk.CfnOutput(this, "Bucket", { value: importBucket.bucketName });
+
+    // Import SQS
+    const sqsName = "catalogItemsQueue"
+    const catalogItemsQueueArn: string = cdk.Fn.importValue(sqsName)
+    const catalogItemsQueue = sqs.Queue.fromQueueArn(this, sqsName, catalogItemsQueueArn)
 
     // Lambda function importProductsFile
     const importProductsFileCode = fs.readFileSync('lambda-functions/importProductsFile.py', 'utf-8');
@@ -54,6 +60,7 @@ export class ImportServiceStack extends cdk.Stack {
       handler: 'index.handler',
       environment: {
         IMPORT_BUCKET_NAME: importBucket.bucketName,
+        SQS_URL: catalogItemsQueue.queueUrl,
       },
     });
     importBucket.grantReadWrite(importFileParserFunction)
@@ -64,6 +71,7 @@ export class ImportServiceStack extends cdk.Stack {
       new s3_notifications.LambdaDestination(importFileParserFunction),
       { prefix: 'uploaded/' }
     );
+    catalogItemsQueue.grantSendMessages(importFileParserFunction)
 
     // API Gateway
     const api = new apigateway.RestApi(this, 'ImportServiceAPI', {
