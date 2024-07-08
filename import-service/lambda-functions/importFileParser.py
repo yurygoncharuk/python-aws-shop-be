@@ -6,17 +6,15 @@ from io import StringIO
 
 def handler(event, context):
     s3_bucket = os.getenv('IMPORT_BUCKET_NAME', "rs-school-import-service")
-    s3_client = boto3.client('s3')
     sqs_url = os.getenv('SQS_URL', "")
+
+    s3_client = boto3.client('s3')
     sqs_client = boto3.client('sqs')
 
     try:
         for record in event['Records']:
             key = record['s3']['object']['key']
-            s3_object = s3_client.get_object(
-                Bucket=s3_bucket,
-                Key=key
-            )
+            s3_object = s3_client.get_object(Bucket=s3_bucket, Key=key)
             s3_data = s3_object['Body'].read().decode('utf-8')
 
             csv_data = StringIO(s3_data)
@@ -24,40 +22,37 @@ def handler(event, context):
             entries = []
             for row in csv_reader:
                 entry = json.dumps(row)
-                print(entry)
                 entries.append({
                     "Id": row['title'],
                     "MessageBody": entry
                 })
 
-            try:
-                sqs_client.send_message_batch(
+            print(json.dumps(entries))
+            if entries:
+                response = sqs_client.send_message_batch(
                     QueueUrl=sqs_url,
                     Entries=entries
                 )
-            except Exception as e:
-                print(f"Error sending message to SQS: {e}")
-                return {
-                    'statusCode': 500,
-                    'body': json.dumps(f"Error sending message to SQS: {e}")
-                }
+                if 'Failed' in response:
+                    raise Exception(f"Failed to send messages: {response['Failed']}")
+                print("Messages were sent to SQS")
 
             s3_client.copy_object(
                 CopySource={'Bucket': s3_bucket, 'Key': key},
                 Bucket=s3_bucket,
                 Key=f'parsed/{key.split("/")[-1]}'
             )
-            s3_client.delete_object(
-                Bucket=s3_bucket,
-                Key=key
-            )
+            s3_client.delete_object(Bucket=s3_bucket, Key=key)
+            print(f"Processed and moved file {key}")
 
     except Exception as e:
-        print(f"Error reading CSV from S3: {e}")
+        error_message = f"Error processing file {key if 'key' in locals() else 'unknown'}: {e}"
+        print(error_message)
         return {
             'statusCode': 500,
-            'body': json.dumps(f"Error reading CSV from S3: {e}")
+            'body': json.dumps(error_message)
         }
+    
     return {
         'statusCode': 200,
         'body': json.dumps('CSV data processed successfully')

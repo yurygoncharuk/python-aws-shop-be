@@ -37,6 +37,8 @@ export class ImportServiceStack extends cdk.Stack {
     const catalogItemsQueueArn: string = cdk.Fn.importValue(sqsName)
     const catalogItemsQueue = sqs.Queue.fromQueueArn(this, sqsName, catalogItemsQueueArn)
 
+    // Lambdas
+    const lambda_timeout = 10
     // Lambda function importProductsFile
     const importProductsFileCode = fs.readFileSync('lambda-functions/importProductsFile.py', 'utf-8');
     const importProductsFileFunction = new lambda.Function(this, 'importProductsFile', {
@@ -44,6 +46,7 @@ export class ImportServiceStack extends cdk.Stack {
       runtime: lambda.Runtime.PYTHON_3_12,
       code: lambda.Code.fromInline(importProductsFileCode),
       handler: 'index.handler',
+      timeout: cdk.Duration.seconds(lambda_timeout),
       environment: {
         IMPORT_BUCKET_NAME: importBucket.bucketName,
       },
@@ -58,6 +61,7 @@ export class ImportServiceStack extends cdk.Stack {
       runtime: lambda.Runtime.PYTHON_3_12,
       code: lambda.Code.fromInline(importFileParserCode),
       handler: 'index.handler',
+      timeout: cdk.Duration.seconds(lambda_timeout),
       environment: {
         IMPORT_BUCKET_NAME: importBucket.bucketName,
         SQS_URL: catalogItemsQueue.queueUrl,
