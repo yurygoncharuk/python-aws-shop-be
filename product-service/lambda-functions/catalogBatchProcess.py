@@ -30,7 +30,17 @@ def handler(event, lambda_context):
         response = sns.publish(
             TopicArn=sns_topic,
             Message=json.dumps(sns_message, indent=4),
-            Subject='New products created'
+            Subject='New products created',
+            MessageAttributes={
+                'count': {
+                    'DataType': 'Number',
+                    'StringValue': str(products_list[0]['count']),
+                },
+                'price': {
+                    'DataType': 'Number',
+                    'StringValue': str(products_list[0]['price']),
+                },
+            },
         )
         print(f"Message sent to SNS: {response}")
         return return_message(200, { "message": "Products created" })

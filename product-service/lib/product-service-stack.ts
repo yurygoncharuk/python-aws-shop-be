@@ -91,7 +91,7 @@ export class ProductServiceStack extends cdk.Stack {
     createProductTopic.addSubscription(
       new EmailSubscription(email_second, {
         filterPolicy: {
-          price: SubscriptionFilter.numericFilter({ greaterThan: 20 }),
+          count: SubscriptionFilter.numericFilter({ greaterThan: 5 }),
         },
       }),
     );
