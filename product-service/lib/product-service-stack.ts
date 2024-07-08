@@ -60,9 +60,7 @@ export class ProductServiceStack extends cdk.Stack {
     // SQS
     const sqsName = "catalogItemsQueue"
     const catalogItemsQueue = new sqs.Queue(this, sqsName, {
-      queueName: sqsName,
-      visibilityTimeout: cdk.Duration.seconds(30),
-      retentionPeriod: cdk.Duration.days(1),      
+      queueName: sqsName,   
     });
     new cdk.CfnOutput(this, 'QueueName', { value: catalogItemsQueue.queueName });
     new cdk.CfnOutput(this, 'QueueURL', { value: catalogItemsQueue.queueUrl });
@@ -96,13 +94,15 @@ export class ProductServiceStack extends cdk.Stack {
       }),
     );
 
-
+    // Lambdas
+    const lambda_timeout = 10
     // Lambda function getProductsList
     const getProductsListFunction = new lambda.Function(this, 'getProductsList', {
       functionName: 'getProductsList',
       runtime: lambda.Runtime.PYTHON_3_12,
       code: lambda.Code.fromAsset('lambda-functions'),
       handler: 'getProductsList.handler',
+      timeout: cdk.Duration.seconds(lambda_timeout),
       environment: {
         PRODUCTS_TABLE_NAME: productsTable.tableName,
         STOCKS_TABLE_NAME: stocksTable.tableName,
@@ -129,6 +129,7 @@ export class ProductServiceStack extends cdk.Stack {
       runtime: lambda.Runtime.PYTHON_3_12,
       code: lambda.Code.fromAsset('lambda-functions'),
       handler: 'createProduct.handler',
+      timeout: cdk.Duration.seconds(lambda_timeout),
       environment: {
         PRODUCTS_TABLE_NAME: productsTable.tableName,
         STOCKS_TABLE_NAME: stocksTable.tableName,
@@ -142,6 +143,7 @@ export class ProductServiceStack extends cdk.Stack {
       runtime: lambda.Runtime.PYTHON_3_12,
       code: lambda.Code.fromAsset('lambda-functions'),
       handler: 'catalogBatchProcess.handler',
+      timeout: cdk.Duration.seconds(lambda_timeout),
       environment: {
         SQS_URL: catalogItemsQueue.queueUrl,
         SNS_ARN: createProductTopic.topicArn,
@@ -154,6 +156,7 @@ export class ProductServiceStack extends cdk.Stack {
     catalogBatchProcessFunction.addEventSource(
       new SqsEventSource(catalogItemsQueue, {
         batchSize: 5,
+        maxBatchingWindow: cdk.Duration.seconds(10),
       }),
     );
     createProductTopic.grantPublish(catalogBatchProcessFunction);

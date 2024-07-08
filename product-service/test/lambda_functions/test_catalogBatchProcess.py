@@ -59,7 +59,7 @@ def test_write_to_dynamodb_missing_fields(dynamodb_mock, env_setup):
     response = write_to_dynamodb(mock_dynamodb, product)
 
     assert response['statusCode'] == 400
-    assert '400 Bad request' in response['body']
+    assert 'Missing required fields' in response['body']
 
 
 def test_handler_success(mocker, dynamodb_mock, env_setup):

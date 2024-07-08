@@ -12,13 +12,13 @@ class DecimalEncoder(json.JSONEncoder):
             if abs(o) % 1 > 0:
                 return float(o)
             return int(o)
-        return super(DecimalEncoder, self).default(o)
+        return super().default(o)
 
-def return_message(status_code, message = None):
+def return_message(status_code, message=None):
     response = {
         400: { "message": "400 Bad request" },
         404: { "message": "404 Product not found" },
-        500: { "message": "500 Internal server error"}
+        500: { "message": "500 Internal server error" }
     }
     return {
         'statusCode': status_code,
@@ -28,21 +28,20 @@ def return_message(status_code, message = None):
             "Access-Control-Allow-Headers": "Content-Type",
             "Content-Type": "application/json",
         },
-        'body': json.dumps(message if message is not None else response[status_code], cls=DecimalEncoder)
+        'body': json.dumps(message if message else response.get(status_code), cls=DecimalEncoder)
     }
 
 def write_to_dynamodb(dynamodb, product):
     try:
         products_table_name = os.getenv('PRODUCTS_TABLE_NAME', "products")
         stocks_table_name = os.getenv('STOCKS_TABLE_NAME', "stocks")
-
         if not product.get('id'):
             product['id'] = str(uuid.uuid4())
-        
-        print(product)
-        
-        if not product.get('title') or not product.get('description') or not product.get('price'):
-            return return_message(400)
+        print(f"Product: {product}")
+
+        if not all(key in product for key in ['title', 'description', 'price']):
+            return return_message(400, { "message": "Missing required fields" })
+
         response = dynamodb.transact_write_items(
             TransactItems=[
                 {
@@ -63,7 +62,7 @@ def write_to_dynamodb(dynamodb, product):
                         'TableName': stocks_table_name,
                         'Item': {
                             'product_id': {'S': product['id']},
-                            'count': {'N': str(product['count'] if product.get('count') else 0)},
+                            'count': {'N': str(product.get('count', 0))}
                         },
                         'ConditionExpression': 'attribute_not_exists(product_id)',
                         'ReturnValuesOnConditionCheckFailure': 'ALL_OLD'
@@ -71,7 +70,13 @@ def write_to_dynamodb(dynamodb, product):
                 }
             ]
         )
+        print(f"Product was added to DynamoDB: {response}")
         return return_message(200, { "message": "Product was created", "product": product })
+
+    except KeyError as e:
+        print(f"Missing required key: {e}")
+        raise
+
     except Exception as e:
-        print(e)
-        return return_message(500, { "message": f"500 Internal server error: {str(e)}" })
+        print(f"Internal server error: {e}")
+        raise
