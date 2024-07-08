@@ -2,7 +2,6 @@ import os
 import boto3
 import csv
 import json
-import uuid
 from io import StringIO
 
 def handler(event, context):
@@ -27,7 +26,7 @@ def handler(event, context):
                 entry = json.dumps(row)
                 print(entry)
                 entries.append({
-                    "Id": str(uuid.uuid4()),
+                    "Id": row['title'],
                     "MessageBody": entry
                 })
 

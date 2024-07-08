@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 sys.path.append(os.path.abspath("lambda-functions"))
 from catalogBatchProcess import handler
-from common import write_to_dynamodb, return_message, DecimalEncoder
+from common import write_to_dynamodb, return_message
 
 os.environ['AWS_ACCESS_KEY_ID'] = 'testing'
 os.environ['AWS_SECRET_ACCESS_KEY'] = 'testing'

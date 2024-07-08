@@ -5,7 +5,7 @@ import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as sqs from 'aws-cdk-lib/aws-sqs';
-import { FilterOrPolicy, SubscriptionFilter, Topic } from "aws-cdk-lib/aws-sns";
+import { SubscriptionFilter, Topic } from "aws-cdk-lib/aws-sns";
 import { EmailSubscription } from "aws-cdk-lib/aws-sns-subscriptions";
 import { SqsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 
@@ -73,20 +73,28 @@ export class ProductServiceStack extends cdk.Stack {
 
     // SNS
     const snsName = "createProductTopic"
-    const email = "yury.hancharuk@gmail.com"
+    const email_first = "yury.hancharuk@gmail.com"
+    const email_second = "yury.goncharuk@gmail.com"
     const createProductTopic = new Topic(this, snsName, {
       topicName: snsName,
     });
     new cdk.CfnOutput(this, 'TopicName', { value: createProductTopic.topicName });
-    // createProductTopic.addSubscription(
-    //   new EmailSubscription(email, {
-    //     filterPolicyWithMessageBody: {
-    //       count: FilterOrPolicy.filter(
-    //         SubscriptionFilter.numericFilter({ greaterThanOrEqualTo: 3 })
-    //       ),
-    //     },
-    //   })
-    // );
+
+    createProductTopic.addSubscription(
+      new EmailSubscription(email_first, {
+        filterPolicy: {
+          count: SubscriptionFilter.numericFilter({ lessThanOrEqualTo: 5 }),
+        },
+      }),
+    );
+
+    createProductTopic.addSubscription(
+      new EmailSubscription(email_second, {
+        filterPolicy: {
+          price: SubscriptionFilter.numericFilter({ greaterThan: 20 }),
+        },
+      }),
+    );
 
 
     // Lambda function getProductsList
