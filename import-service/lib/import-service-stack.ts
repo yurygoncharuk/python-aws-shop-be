@@ -39,6 +39,12 @@ export class ImportServiceStack extends cdk.Stack {
 
     // Lambdas
     const lambda_timeout = 10
+
+    // Import Lambda function basicAuthorizer
+    const lambdaName = "basicAuthorizer"
+    const lambdaArn: string = cdk.Fn.importValue(lambdaName)
+    const basicAuthorizerFunction = lambda.Function.fromFunctionArn(this, lambdaName, lambdaArn)
+
     // Lambda function importProductsFile
     const importProductsFileCode = fs.readFileSync('lambda-functions/importProductsFile.py', 'utf-8');
     const importProductsFileFunction = new lambda.Function(this, 'importProductsFile', {
@@ -84,8 +90,28 @@ export class ImportServiceStack extends cdk.Stack {
       defaultCorsPreflightOptions: {
         allowOrigins: apigateway.Cors.ALL_ORIGINS,
         allowMethods: apigateway.Cors.ALL_METHODS,
+        allowHeaders: apigateway.Cors.DEFAULT_HEADERS,
       }
     });
+    const authorizer = new apigateway.TokenAuthorizer(
+      this, 'ImportServiceBasicAuthorizer', {
+      handler: basicAuthorizerFunction,
+      validationRegex: '^(Basic )(.*)$',
+      identitySource: apigateway.IdentitySource.header('Authorization'),
+    });
+    api.addGatewayResponse('Default4XX', {
+      type: apigateway.ResponseType.DEFAULT_4XX,
+      templates: {
+        'application/json': '{"message":$context.error.messageString}',
+      },
+      responseHeaders: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET",
+        "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
+        "Content-Type": "application/json",
+      },
+    });
+
     const importProductsResource = api.root.addResource('import');
     importProductsResource.addMethod('GET', new apigateway.LambdaIntegration(importProductsFileFunction), {
       requestParameters: { 'method.request.querystring.name': true },
@@ -93,6 +119,8 @@ export class ImportServiceStack extends cdk.Stack {
         validateRequestBody: false,
         validateRequestParameters: true,
       },
+      authorizationType: apigateway.AuthorizationType.CUSTOM,
+      authorizer: authorizer,
     });
     new cdk.CfnOutput(this, 'API_URL', {
       value: api.url,
