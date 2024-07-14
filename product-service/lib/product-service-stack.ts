@@ -4,6 +4,10 @@ import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import * as sqs from 'aws-cdk-lib/aws-sqs';
+import { SubscriptionFilter, Topic } from "aws-cdk-lib/aws-sns";
+import { EmailSubscription } from "aws-cdk-lib/aws-sns-subscriptions";
+import { SqsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 
 export class ProductServiceStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -53,12 +57,52 @@ export class ProductServiceStack extends cdk.Stack {
       ],
     });
 
+    // SQS
+    const sqsName = "catalogItemsQueue"
+    const catalogItemsQueue = new sqs.Queue(this, sqsName, {
+      queueName: sqsName,   
+    });
+    new cdk.CfnOutput(this, 'QueueName', { value: catalogItemsQueue.queueName });
+    new cdk.CfnOutput(this, 'QueueURL', { value: catalogItemsQueue.queueUrl });
+    new cdk.CfnOutput(this, 'QueueARN', {
+      value: catalogItemsQueue.queueArn,
+      exportName: 'catalogItemsQueue',
+    });
+
+    // SNS
+    const snsName = "createProductTopic"
+    const email_first = "yury.hancharuk@gmail.com"
+    const email_second = "yury.goncharuk@gmail.com"
+    const createProductTopic = new Topic(this, snsName, {
+      topicName: snsName,
+    });
+    new cdk.CfnOutput(this, 'TopicName', { value: createProductTopic.topicName });
+
+    createProductTopic.addSubscription(
+      new EmailSubscription(email_first, {
+        filterPolicy: {
+          count: SubscriptionFilter.numericFilter({ lessThanOrEqualTo: 5 }),
+        },
+      }),
+    );
+
+    createProductTopic.addSubscription(
+      new EmailSubscription(email_second, {
+        filterPolicy: {
+          count: SubscriptionFilter.numericFilter({ greaterThan: 5 }),
+        },
+      }),
+    );
+
+    // Lambdas
+    const lambda_timeout = 10
     // Lambda function getProductsList
     const getProductsListFunction = new lambda.Function(this, 'getProductsList', {
       functionName: 'getProductsList',
       runtime: lambda.Runtime.PYTHON_3_12,
       code: lambda.Code.fromAsset('lambda-functions'),
       handler: 'getProductsList.handler',
+      timeout: cdk.Duration.seconds(lambda_timeout),
       environment: {
         PRODUCTS_TABLE_NAME: productsTable.tableName,
         STOCKS_TABLE_NAME: stocksTable.tableName,
@@ -85,12 +129,37 @@ export class ProductServiceStack extends cdk.Stack {
       runtime: lambda.Runtime.PYTHON_3_12,
       code: lambda.Code.fromAsset('lambda-functions'),
       handler: 'createProduct.handler',
+      timeout: cdk.Duration.seconds(lambda_timeout),
       environment: {
         PRODUCTS_TABLE_NAME: productsTable.tableName,
         STOCKS_TABLE_NAME: stocksTable.tableName,
       },
     });
     createProductFunction.addToRolePolicy(dynamodbPolicy);
+
+    // Lambda function catalogBatchProcess
+    const catalogBatchProcessFunction = new lambda.Function(this, 'catalogBatchProcess', {
+      functionName: 'catalogBatchProcess',
+      runtime: lambda.Runtime.PYTHON_3_12,
+      code: lambda.Code.fromAsset('lambda-functions'),
+      handler: 'catalogBatchProcess.handler',
+      timeout: cdk.Duration.seconds(lambda_timeout),
+      environment: {
+        SQS_URL: catalogItemsQueue.queueUrl,
+        SNS_ARN: createProductTopic.topicArn,
+        PRODUCTS_TABLE_NAME: productsTable.tableName,
+        STOCKS_TABLE_NAME: stocksTable.tableName,
+      },
+    });
+    catalogBatchProcessFunction.addToRolePolicy(dynamodbPolicy);
+    catalogItemsQueue.grantConsumeMessages(catalogBatchProcessFunction);
+    catalogBatchProcessFunction.addEventSource(
+      new SqsEventSource(catalogItemsQueue, {
+        batchSize: 5,
+        maxBatchingWindow: cdk.Duration.seconds(10),
+      }),
+    );
+    createProductTopic.grantPublish(catalogBatchProcessFunction);
 
     // API Gateway
     const api = new apigateway.RestApi(this, 'ProductServiceAPI', {
@@ -145,5 +214,6 @@ export class ProductServiceStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'API_URL', {
       value: api.url,
     })
+
   }
 }
