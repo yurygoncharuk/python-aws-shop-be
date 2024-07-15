@@ -99,16 +99,24 @@ export class ImportServiceStack extends cdk.Stack {
       validationRegex: '^(Basic )(.*)$',
       identitySource: apigateway.IdentitySource.header('Authorization'),
     });
-    api.addGatewayResponse('Default4XX', {
-      type: apigateway.ResponseType.DEFAULT_4XX,
+    api.addGatewayResponse("Unauthorized", {
+      type: apigateway.ResponseType.UNAUTHORIZED,
+      responseHeaders: {
+        'Access-Control-Allow-Origin': "'*'",
+      },
+      statusCode: "401",
       templates: {
         'application/json': '{"message":$context.error.messageString}',
       },
+    });
+    api.addGatewayResponse("AccessDenied", {
+      type: apigateway.ResponseType.ACCESS_DENIED,
       responseHeaders: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET",
-        "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
-        "Content-Type": "application/json",
+        'Access-Control-Allow-Origin': "'*'",
+      },
+      statusCode: "403",
+      templates: {
+        'application/json': '{"message":$context.error.messageString}',
       },
     });
 
