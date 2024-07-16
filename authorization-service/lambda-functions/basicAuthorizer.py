@@ -1,6 +1,7 @@
 import os
 import base64
 import json
+import re
 
 def generatePolicy(principal_id, effect, resource):
     policy = {
@@ -33,7 +34,7 @@ def handler(event, context):
     try:
         encoded_credentials = encoded_credentials.strip()
         decoded_credentials = base64.b64decode(encoded_credentials).decode('utf-8')
-        username, password = decoded_credentials.split('=')
+        username, password = re.split(r'[=:]', decoded_credentials)
     except (ValueError, UnicodeDecodeError):
         return generatePolicy("Undefined", 'Deny', event['methodArn'])
 
