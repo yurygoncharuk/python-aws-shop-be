@@ -39,6 +39,12 @@ export class ImportServiceStack extends cdk.Stack {
 
     // Lambdas
     const lambda_timeout = 10
+
+    // Import Lambda function basicAuthorizer
+    const lambdaName = "basicAuthorizer"
+    const lambdaArn: string = cdk.Fn.importValue(lambdaName)
+    const basicAuthorizerFunction = lambda.Function.fromFunctionArn(this, lambdaName, lambdaArn)
+
     // Lambda function importProductsFile
     const importProductsFileCode = fs.readFileSync('lambda-functions/importProductsFile.py', 'utf-8');
     const importProductsFileFunction = new lambda.Function(this, 'importProductsFile', {
@@ -84,8 +90,36 @@ export class ImportServiceStack extends cdk.Stack {
       defaultCorsPreflightOptions: {
         allowOrigins: apigateway.Cors.ALL_ORIGINS,
         allowMethods: apigateway.Cors.ALL_METHODS,
+        allowHeaders: apigateway.Cors.DEFAULT_HEADERS,
       }
     });
+    const authorizer = new apigateway.TokenAuthorizer(
+      this, 'ImportServiceBasicAuthorizer', {
+      handler: basicAuthorizerFunction,
+      validationRegex: '^(Basic )(.*)$',
+      identitySource: apigateway.IdentitySource.header('Authorization'),
+    });
+    api.addGatewayResponse("Unauthorized", {
+      type: apigateway.ResponseType.UNAUTHORIZED,
+      responseHeaders: {
+        'Access-Control-Allow-Origin': "'*'",
+      },
+      statusCode: "401",
+      templates: {
+        'application/json': '{"message":$context.error.messageString}',
+      },
+    });
+    api.addGatewayResponse("AccessDenied", {
+      type: apigateway.ResponseType.ACCESS_DENIED,
+      responseHeaders: {
+        'Access-Control-Allow-Origin': "'*'",
+      },
+      statusCode: "403",
+      templates: {
+        'application/json': '{"message":$context.error.messageString}',
+      },
+    });
+
     const importProductsResource = api.root.addResource('import');
     importProductsResource.addMethod('GET', new apigateway.LambdaIntegration(importProductsFileFunction), {
       requestParameters: { 'method.request.querystring.name': true },
@@ -93,6 +127,8 @@ export class ImportServiceStack extends cdk.Stack {
         validateRequestBody: false,
         validateRequestParameters: true,
       },
+      authorizationType: apigateway.AuthorizationType.CUSTOM,
+      authorizer: authorizer,
     });
     new cdk.CfnOutput(this, 'API_URL', {
       value: api.url,
