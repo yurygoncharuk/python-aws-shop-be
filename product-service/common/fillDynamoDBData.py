@@ -10,9 +10,10 @@ def get_input():
     description = input("Enter product description: ").strip()
     price = input("Enter product price: ").strip()
     count = input("Enter product count: ").strip()
+    imageUrl = input("Enter product imageUrl: ").strip()
     confirm = input("Is the information correct? (y/n) ").strip()
     if confirm == 'y':
-        tableCreation(title, description, price, count)
+        tableCreation(title, description, price, imageUrl, count)
     else:
         get_input()
     cont = input("Would you like to add a new product? (y/n) ").strip()
@@ -23,7 +24,7 @@ def get_input():
         return "Goodbye!"
 
 
-def tableCreation(title, description, price, count=0):
+def tableCreation(title, description, price, imageUrl='', count=0):
     try:
         id = uuid.uuid4()
 
@@ -38,6 +39,7 @@ def tableCreation(title, description, price, count=0):
                             'title': {'S': str(title)},
                             'description': {'S': str(description)},
                             'price': {'N': str(price)},
+                            'imageUrl': {'S': str(imageUrl)}
                         },
                         'ConditionExpression': 'attribute_not_exists(id)',
                         'ReturnValuesOnConditionCheckFailure': 'ALL_OLD'

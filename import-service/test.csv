@@ -1,7 +1,4 @@
-id,title,description,price,count
-,test20,Description test20,20,1
-,test21,Description test21,21,2
-,test22,Description test22,22,4
-,test23,Description test23,23,4
-,test24,Description test24,24,4
-,test25,Description test25,25,4
+id,title,description,price,imageUrl,count
+,test20,Description test20,20,https://a.allegroimg.com/s180/116589/e460156c41048679841debd48745/Figurka-Funko-POP-1362-Deadpool-Marvel-Deadpool,1
+,test21,Description test21,21,https://a.allegroimg.com/s180/11da26/df2e23bd40fe8fcb4a40b6d09743/POP-Marvel-Deadpool-3-Wolverine,2
+,test22,Description test22,22,https://a.allegroimg.com/s180/11ff61/37aaa769415085b42cb9f4cbaf87/FIGURKA-POP-GAMES-SPIDER-MAN-2-MILES-MORALES-970,4
