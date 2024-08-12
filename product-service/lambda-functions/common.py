@@ -52,6 +52,7 @@ def write_to_dynamodb(dynamodb, product):
                             'title': {'S': product['title']},
                             'description': {'S': product['description']},
                             'price': {'N': str(product['price'])},
+                            'imageUrl': {'S': product.get('imageUrl', '')},
                         },
                         'ConditionExpression': 'attribute_not_exists(id)',
                         'ReturnValuesOnConditionCheckFailure': 'ALL_OLD'
