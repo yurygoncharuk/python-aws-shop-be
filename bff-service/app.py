@@ -15,12 +15,12 @@ def get_service_url(service_name):
     return os.getenv(service_name.upper() + "_URL")
 
 @cache.cached(timeout=120, key_prefix='products')
-def get_products(service_name, path):
+def get_products(service_name):
     product_url = get_service_url(service_name)
     if not product_url:
         return {"error": "Cannot process request"}, 502
     
-    response = requests.get(f"{product_url}/{path}")
+    response = requests.get(f"{product_url}/products")
     return response.json(), response.status_code
 
 @app.before_request
@@ -44,8 +44,8 @@ def proxy_request(service_name, path):
     headers = {key: value for key, value in request.headers.items() if not any(key.lower().startswith(eh) for eh in EXCLUDED_HEADERS)}
     print(f"Headers: {headers}")
 
-    if service_name == "product" and method == "GET" and "products" in path:
-        return jsonify(get_products(service_name, path))
+    if service_name == "product" and method == "GET" and path == "products":
+        return jsonify(get_products(service_name))
 
     full_url = f"{recipient_url}/{path}"
     print(f"Full URL: {full_url}")
